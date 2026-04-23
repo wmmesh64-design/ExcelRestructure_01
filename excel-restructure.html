@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excel Restructure Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --border: #2a2a2a;
+      --border2: #333333;
+      --text: #e8e8e4;
+      --muted: #666660;
+      --muted2: #444440;
+      --accent: #c8f060;
+      --accent-dim: rgba(200, 240, 96, 0.12);
+      --accent-dim2: rgba(200, 240, 96, 0.06);
+      --red: #ff5f5f;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans Arabic', sans-serif;
+    }
+
+    html { font-size: 15px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+    }
+
+    .grid-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(200,240,96,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,240,96,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    main {
+      position: relative; z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex; flex-direction: column; gap: 1.25rem;
+    }
+
+    header {
+      display: flex; align-items: center; gap: 1rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-mark {
+      width: 44px; height: 44px;
+      background: var(--accent);
+      color: #0a0a0a;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .header-text p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      transition: border-color 0.2s, opacity 0.3s;
+    }
+    .card.disabled { opacity: 0.4; pointer-events: none; }
+    .card.active { border-color: var(--border2); opacity: 1; }
+
+    .step-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+    }
+
+    .drop-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: 8px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      background: var(--accent-dim2);
+      border-color: var(--accent);
+    }
+    .drop-zone input { display: none; }
+    .drop-icon { color: var(--muted); margin-bottom: 0.75rem; }
+    .drop-text { font-size: 0.9rem; color: var(--muted); }
+    .drop-sub { font-family: var(--mono); font-size: 0.72rem; color: var(--muted2); margin-top: 6px; letter-spacing: 0.05em; }
+    .link { color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+    .file-info {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--accent-dim2);
+      border: 1px solid rgba(200,240,96,0.2);
+      border-radius: 6px;
+    }
+    .file-name { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); }
+    .file-rows { font-size: 0.75rem; color: var(--muted); }
+
+    .config-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .config-field { flex: 1; min-width: 180px; }
+    .config-field label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+    .config-field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 10px center;
+    }
+    .config-field select:focus { outline: none; border-color: var(--accent); }
+    .config-field select:disabled { opacity: 0.5; cursor: not-allowed; }
+    .arrow { color: var(--muted2); font-size: 1.2rem; padding-top: 1.5rem; flex-shrink: 0; }
+
+    .types-preview { margin-top: 1.2rem; display: flex; flex-wrap: wrap; gap: 6px; }
+    .type-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(200,240,96,0.2);
+      letter-spacing: 0.02em;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.7rem;
+      color: var(--accent);
+      padding: 8px 14px;
+      text-align: right;
+      background: var(--accent-dim2);
+      border-bottom: 1px solid var(--border2);
+      white-space: nowrap;
+      letter-spacing: 0.03em;
+    }
+    td {
+      padding: 7px 14px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); color: var(--text); }
+
+    .action-row {
+      display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+      padding-top: 0.5rem;
+    }
+    .btn-export {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-export:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-export:active:not(:disabled) { transform: translateY(0); }
+    .btn-export:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .status-msg { font-size: 0.8rem; color: var(--muted); min-height: 20px; font-family: var(--mono); }
+    .status-msg.success { color: var(--accent); }
+    .status-msg.error { color: var(--red); }
+
+    @media (max-width: 500px) {
+      .config-row { flex-direction: column; }
+      .arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <main>
+    <header>
+      <div class="logo-mark">XR</div>
+      <div class="header-text">
+        <h1>Excel Restructure</h1>
+        <p>حوّل أعمدة النوع والمعرّف إلى هيكل منظم</p>
+      </div>
+    </header>
+
+    <section class="card" id="uploadCard">
+      <div class="step-label">01 — رفع الملف</div>
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="drop-text">اسحب الملف هنا أو <span class="link" onclick="document.getElementById('fileInput').click()">اختر من جهازك</span></div>
+        <div class="drop-sub">xlsx · xls · csv</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+      </div>
+      <div class="file-info" id="fileInfo" style="display:none">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-rows" id="fileRows"></div>
+      </div>
+    </section>
+
+    <section class="card disabled" id="configCard">
+      <div class="step-label">02 — إعداد الأعمدة</div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>عمود النوع (Type)</label>
+          <select id="typeCol" disabled></select>
+        </div>
+        <div class="arrow">→</div>
+        <div class="config-field">
+          <label>عمود المعرّف (ID)</label>
+          <select id="idCol" disabled></select>
+        </div>
+      </div>
+      <div class="types-preview" id="typesPreview"></div>
+    </section>
+
+    <section class="card disabled" id="previewCard">
+      <div class="step-label">03 — معاينة البيانات</div>
+      <div class="table-wrap" id="tableWrap"></div>
+    </section>
+
+    <div class="action-row">
+      <button class="btn-export" id="exportBtn" disabled onclick="processData()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        تحميل الملف المُعاد هيكلته
+      </button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    let rawRows = [];   // original rows from Excel
+    let headers = [];
+    let allTypes = [];  // unique type names found
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const configCard = document.getElementById('configCard');
+    const previewCard = document.getElementById('previewCard');
+    const exportBtn = document.getElementById('exportBtn');
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+    function splitCell(val) {
+      // Split a cell value by newline into an array of trimmed non-empty strings
+      return String(val === null || val === undefined ? '' : val)
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          // cellDates:false keeps numbers as-is; raw:false converts everything to string
+          const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (raw.length < 2) { setStatus('الملف فارغ أو لا يحتوي بيانات كافية', 'error'); return; }
+
+          headers = raw[0].map(h => String(h).trim()).filter(Boolean);
+          rawRows = raw.slice(1).map(row => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = row[i] !== undefined ? row[i] : '');
+            return obj;
+          }).filter(r => headers.some(h => String(r[h]).trim() !== ''));
+
+          document.getElementById('fileInfo').style.display = 'flex';
+          document.getElementById('fileName').textContent = file.name;
+          document.getElementById('fileRows').textContent = rawRows.length + ' صف';
+
+          populateSelects();
+          configCard.classList.remove('disabled');
+          configCard.classList.add('active');
+          updateAll();
+        } catch (err) {
+          setStatus('خطأ في قراءة الملف: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function populateSelects() {
+      const typeCol = document.getElementById('typeCol');
+      const idCol = document.getElementById('idCol');
+      typeCol.innerHTML = '';
+      idCol.innerHTML = '';
+      headers.forEach(h => {
+        typeCol.innerHTML += '<option value="' + h + '">' + h + '</option>';
+        idCol.innerHTML += '<option value="' + h + '">' + h + '</option>';
+      });
+      if (headers.length > 1) idCol.value = headers[1];
+      typeCol.disabled = false;
+      idCol.disabled = false;
+      typeCol.addEventListener('change', updateAll);
+      idCol.addEventListener('change', updateAll);
+    }
+
+    function collectUniqueTypes(tc) {
+      // Gather all unique types preserving first-appearance order
+      const seen = new Set();
+      const result = [];
+      rawRows.forEach(row => {
+        splitCell(row[tc]).forEach(t => {
+          if (!seen.has(t)) { seen.add(t); result.push(t); }
+        });
+      });
+      return result;
+    }
+
+    function buildOutputRows(tc, ic) {
+      const types = collectUniqueTypes(tc);
+      const outputRows = [];
+
+      rawRows.forEach(row => {
+        const types_in_row = splitCell(row[tc]);
+        const ids_in_row = splitCell(row[ic]);
+
+        // Start with ALL original columns
+        const out = {};
+        headers.forEach(h => out[h] = row[h] !== undefined ? row[h] : '');
+
+        // Add new type columns (empty by default)
+        types.forEach(t => out[t] = '');
+
+        // Fill type columns from split values
+        types_in_row.forEach((t, i) => {
+          out[t] = ids_in_row[i] !== undefined ? ids_in_row[i] : '';
+        });
+
+        outputRows.push(out);
+      });
+
+      return { types, outputRows };
+    }
+
+    function updateAll() {
+      const tc = document.getElementById('typeCol').value;
+      const ic = document.getElementById('idCol').value;
+      const types = collectUniqueTypes(tc);
+      allTypes = types;
+
+      document.getElementById('typesPreview').innerHTML = types.map(t => '<span class="type-tag">' + t + '</span>').join('');
+
+      const { outputRows } = buildOutputRows(tc, ic);
+      renderPreviewTable(types, outputRows);
+
+      previewCard.classList.remove('disabled');
+      previewCard.classList.add('active');
+      exportBtn.disabled = false;
+    }
+
+    function renderPreviewTable(types, outputRows) {
+      const allCols = [...headers, ...types];
+      const preview = outputRows.slice(0, 5);
+      let html = '<table><thead><tr>' + allCols.map(t => '<th>' + t + '</th>').join('') + '</tr></thead><tbody>';
+      preview.forEach(row => {
+        html += '<tr>' + allCols.map(t => '<td>' + (row[t] !== undefined && row[t] !== '' ? row[t] : '—') + '</td>').join('') + '</tr>';
+      });
+      if (outputRows.length > 5) {
+        html += '<tr><td colspan="' + allCols.length + '" style="text-align:center;color:var(--muted2);font-size:0.7rem;padding:8px">... ' + (outputRows.length - 5) + ' صف إضافي</td></tr>';
+      }
+      html += '</tbody></table>';
+      document.getElementById('tableWrap').innerHTML = html;
+    }
+
+    function processData() {
+      const tc = document.getElementById('typeCol').value;
+      const ic = document.getElementById('idCol').value;
+      const { types, outputRows } = buildOutputRows(tc, ic);
+
+      // Column order: original headers first, then new type columns
+      const finalHeaders = [...headers, ...types];
+
+      const ws = XLSX.utils.json_to_sheet(outputRows, { header: finalHeaders });
+      ws['!cols'] = finalHeaders.map(h => ({ wch: Math.max(h.length + 2, 14) }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Restructured');
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'restructured_output.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setStatus('✓ تم — ' + headers.length + ' عمود أصلي + ' + types.length + ' عمود جديد', 'success');
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.className = 'status-msg ' + (type || '');
+    }
+  </script>
+</body>
+</html>
